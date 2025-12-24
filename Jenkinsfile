@@ -9,7 +9,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                sshagent(['GitPem']) { // <-- Use your Jenkins SSH credential ID
+                sshagent(['git']) { // <-- Use your Jenkins SSH credential ID
                     checkout scm
                 }
             }
