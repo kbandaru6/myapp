@@ -1,55 +1,74 @@
 pipeline {
-  agent any
+    agent any
 
-  stages {
-    stage('Checkout') {
-      steps {
-        checkout scm
-      }
+    environment {
+        BACKEND_IMAGE = 'app-backend'
+        FRONTEND_IMAGE = 'app-frontend'
     }
 
-    stage('Debug Workspace') {
-      steps {
-        sh '''
-          echo "=== ROOT ==="
-          pwd
-          ls -la
-
-          echo "=== FRONTEND ==="
-          ls -la frontend || true
-        '''
-      }
-    }
-
-    stage('Build Frontend') {
-      steps {
-        dir('frontend') {
-          sh '''
-            echo "PWD inside frontend:"
-            pwd
-            ls -la
-
-            echo "Running node container test:"
-            docker run --rm \
-              -v "$PWD:/app" \
-              -w /app \
-              node:18 \
-              ls -la /app
-
-            docker run --rm \
-              -v "$PWD:/app" \
-              -w /app \
-              node:18 \
-              cat /app/package.json
-
-            docker run --rm \
-              -v "$PWD:/app" \
-              -w /app \
-              node:18 \
-              npm install
-          '''
+    stages {
+        stage('Checkout') {
+            steps {
+                sshagent(['GitPem']) { // <-- Use your Jenkins SSH credential ID
+                    checkout scm
+                }
+            }
         }
-      }
+
+        stage('Sanity Check Workspace') {
+            steps {
+                sh 'pwd'
+                sh 'ls -la'
+                sh 'ls -la frontend || true'
+                sh 'find . -maxdepth 4 -name package.json -print'
+            }
+        }
+
+
+        stage('Build Backend') {
+            steps {
+                dir('backend') {
+                    sh 'chmod +x mvnw'
+                    sh './mvnw clean package -DskipTests'
+                }
+            }
+        }
+
+        stage('Build Frontend') {
+        tools {
+            nodejs 'Node18'
+        }
+        steps {
+            dir('frontend') {
+            sh '''
+                npm install
+                npm run build
+            '''
+            }
+        }
+        }
+
+
+        stage('Build Docker Images') {
+            steps {
+                sh "docker build -t ${env.BACKEND_IMAGE} backend"
+                sh "docker build -t ${env.FRONTEND_IMAGE} frontend"
+            }
+        }
+
+        stage('Run Docker Compose') {
+            steps {
+                sh 'docker-compose up -d --build'
+            }
+        }
     }
-  }
+
+    post {
+        success {
+            echo '✅ Pipeline succeeded!'
+        }
+        failure {
+            echo '❌ Pipeline failed.'
+        }
+    }
 }
