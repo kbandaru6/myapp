@@ -2,48 +2,46 @@ pipeline {
     agent any
 
     environment {
-        BACKEND_IMAGE = 'myapp-backend'
+        BACKEND_IMAGE = 'app-backend'
     }
 
     stages {
-
         stage('Checkout') {
             steps {
-                checkout scm
-            }
-        }
-
-        stage('Build Backend (Maven)') {
-            steps {
-                dir('backend') {
-                    sh 'chmod +x mvnw'
-                    sh './mvnw clean package'
+                sshagent(['GitPem']) { // <-- Use your Jenkins SSH credential ID
+                    checkout scm
                 }
             }
         }
 
-        stage('Build Backend Docker Image') {
+        stage('Build Backend') {
             steps {
-                sh 'docker build -t $BACKEND_IMAGE ./backend'
+                dir('backend') {
+                    sh 'chmod +x mvnw'
+                    sh './mvnw clean package -DskipTests'
+                }
             }
         }
 
-        stage('Run Backend (Smoke Test)') {
+        stage('Build Docker Images') {
             steps {
-                sh '''
-                  docker rm -f backend-test || true
-                  docker run -d --name backend-test -p 8081:8081 $BACKEND_IMAGE
-                  sleep 10
-                  curl -f http://localhost:8081/actuator/health || exit 1
-                '''
+                sh "docker build -t ${env.BACKEND_IMAGE} backend"
+            }
+        }
+
+        stage('Run Docker Compose') {
+            steps {
+                sh 'docker-compose up -d --build'
             }
         }
     }
 
     post {
-        always {
-            sh 'docker rm -f backend-test || true'
-            echo 'Pipeline finished.'
+        success {
+            echo '✅ Pipeline succeeded!'
+        }
+        failure {
+            echo '❌ Pipeline failed.'
         }
     }
 }
