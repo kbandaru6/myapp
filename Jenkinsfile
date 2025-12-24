@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "myapp-backend"
-        IMAGE_TAG  = "latest"
+        BACKEND_IMAGE = 'app-backend'
+        IMAGE_TAG = 'latest'
     }
 
     stages {
@@ -14,9 +14,10 @@ pipeline {
             }
         }
 
-        stage('Build Backend (Maven)') {
+        stage('Build Backend') {
             steps {
                 dir('backend') {
+                    sh 'chmod +x mvnw'
                     sh './mvnw clean package -DskipTests'
                 }
             }
@@ -24,36 +25,36 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh '''
+                sh """
                   docker build \
-                    -t ${IMAGE_NAME}:${IMAGE_TAG} \
+                    -t ${BACKEND_IMAGE}:${IMAGE_TAG} \
                     ./backend
-                '''
+                """
             }
         }
 
         stage('Smoke Test Container') {
             steps {
-                sh '''
+                sh """
                   docker run -d --rm \
                     --name backend-test \
                     -p 8081:8081 \
-                    ${IMAGE_NAME}:${IMAGE_TAG}
+                    ${BACKEND_IMAGE}:${IMAGE_TAG}
 
                   sleep 10
                   curl -f http://localhost:8081/actuator/health || exit 1
                   docker stop backend-test
-                '''
+                """
             }
         }
     }
 
     post {
         success {
-            echo '✅ Backend build successful'
+            echo '✅ Backend pipeline succeeded!'
         }
         failure {
-            echo '❌ Backend build failed'
+            echo '❌ Backend pipeline failed.'
         }
     }
 }
