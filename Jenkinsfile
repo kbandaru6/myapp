@@ -15,6 +15,16 @@ pipeline {
             }
         }
 
+        stage('Sanity Check Workspace') {
+            steps {
+                sh 'pwd'
+                sh 'ls -la'
+                sh 'ls -la frontend || true'
+                sh 'find . -maxdepth 4 -name package.json -print'
+            }
+        }
+
+
         stage('Build Backend') {
             steps {
                 dir('backend') {
@@ -25,13 +35,24 @@ pipeline {
         }
 
         stage('Build Frontend') {
-            steps {
-                dir('frontend') {
-                    sh 'docker run --rm -v "$PWD:/app" -w /app node:18 npm install'
-                    sh 'docker run --rm -v "$PWD:/app" -w /app node:18 npm run build'
-                }
-            }
-        }
+  steps {
+    dir('frontend') {
+      sh '''
+        set -eux
+        ls -la
+        docker run --rm \
+          -v "$PWD:/app" \
+          -w /app \
+          node:18 npm ci
+        docker run --rm \
+          -v "$PWD:/app" \
+          -w /app \
+          node:18 npm run build
+      '''
+    }
+  }
+}
+
 
         stage('Build Docker Images') {
             steps {
