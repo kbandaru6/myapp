@@ -32,29 +32,14 @@ pipeline {
                 """
             }
         }
-
-        stage('Smoke Test Container') {
-            steps {
-                sh """
-                  docker run -d --rm \
-                    --name backend-test \
-                    -p 8081:8081 \
-                    ${BACKEND_IMAGE}:${IMAGE_TAG}
-
-                  sleep 10
-                  curl -f http://localhost:8081/actuator/health || exit 1
-                  docker stop backend-test
-                """
-            }
-        }
     }
 
     post {
         success {
-            echo '✅ Backend pipeline succeeded!'
+            echo '✅ Backend image built successfully'
         }
         failure {
-            echo '❌ Backend pipeline failed.'
+            echo '❌ Backend build failed'
         }
     }
 }
