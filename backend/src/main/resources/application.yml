@@ -1,0 +1,17 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/myappdb
+    username: kiranbandaru   # or 'postgres' if you created that role
+    password: mypassword  # put the password you set for this role
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update    # creates/updates tables automatically
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+
+server:
+  port: 8081   # optional, set your app's port
